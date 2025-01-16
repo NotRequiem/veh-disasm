@@ -28,12 +28,12 @@ inline unsigned __int64 __fastcall __rol8(unsigned __int64 value, int count)
     return value;
 }
 
-PVOID __fastcall __decode_pointer(const HMODULE hinstance, const PVOID pointer, const HANDLE hProcess)
+PVOID __fastcall __decode_pointer(const HMODULE hinstance, const PVOID pointer)
 {
     static ULONG processCookie = 0;
 
     if (!processCookie) {
-        processCookie = __ntqip(hinstance, hProcess);
+        processCookie = __ntqip(hinstance);
 
         if (!processCookie)
             return 0;
@@ -42,22 +42,38 @@ PVOID __fastcall __decode_pointer(const HMODULE hinstance, const PVOID pointer, 
     return (PVOID)(__rol8((ULONGLONG)pointer, processCookie & 0x3F) ^ processCookie);
 }
 
-PBYTE __disassemble(PBYTE baseAddress)
-{
+LONG __stdcall __dummy_veh(PEXCEPTION_POINTERS* ExceptionInfo) {
+    return 0;
+}
+
+PBYTE __disassemble(CONST PBYTE baseAddress) {
     PBYTE address = NULL;
     PBYTE current_address = baseAddress;
 
-    // Check for LEA instruction with RIP-relative addressing
-    while (current_address < baseAddress + 0x1000) {
-        // "lea rdi, [address]" pattern
-        if (current_address[0] == 0x48 && current_address[1] == 0x8D &&
-            current_address[2] == 0x3D) {  // lea rdi, [rip+offset]
-            // Calculate the address
-            int offset = *(int*)(current_address + 3);
-            address = (PBYTE)__rel32_to_abs(current_address + 7, offset);  // 7 is the instruction size
+    const BYTE pattern[] = {
+        0x80, 0x04, 0x2B, 0x9E, 0xFF, 0x7F, 0x00, 0x00,
+        0x70, 0x75, 0x2C, 0x9E, 0xFF, 0x7F, 0x00, 0x00
+    };
+    const size_t pattern_size = sizeof(pattern);
+
+    while (current_address < baseAddress + 0xFFFFF) {
+        if (memcmp(current_address, pattern, pattern_size) == 0) {
+            address = current_address + pattern_size - 8;
             break;
         }
         current_address++;
+    }
+
+    if (address == NULL) {
+        const PVOID dummyHandler = AddVectoredExceptionHandler(0, &__dummy_veh);
+
+        if (dummyHandler == NULL) {
+            printf("[-] Failed to register a dummy handler");
+            return NULL;
+        }
+
+        address = ((PLIST_ENTRY)dummyHandler)->Flink;
+        RemoveVectoredExceptionHandler(__dummy_veh);
     }
 
     return address;

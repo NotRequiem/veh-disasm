@@ -1,6 +1,6 @@
 #include "utils.h"
 
-ULONG __fastcall __ntqip(const HMODULE ntdll, const HANDLE hProcess) 
+ULONG __fastcall __ntqip(const HMODULE ntdll) 
 {
     NtQueryInformationProcess_t NtQueryInformationProcess =
         (NtQueryInformationProcess_t)GetProcAddress(ntdll, "NtQueryInformationProcess");
@@ -8,7 +8,7 @@ ULONG __fastcall __ntqip(const HMODULE ntdll, const HANDLE hProcess)
     ULONG cookie = 0;
     const ULONG ProcessCookieClass = 36;
 
-    const NTSTATUS success = NtQueryInformationProcess(hProcess,
+    const NTSTATUS success = NtQueryInformationProcess(GetCurrentProcess(),
         (PROCESSINFOCLASS)ProcessCookieClass,
         &cookie,
         sizeof(cookie),

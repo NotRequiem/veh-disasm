@@ -18,7 +18,7 @@ extern "C" {
         PULONG ReturnLength
         );
 
-    ULONG __fastcall __ntqip(const HMODULE ntdll, const HANDLE hProcess);
+    ULONG __fastcall __ntqip(const HMODULE ntdll);
     BOOL __get_module(const HANDLE hProcess, PVOID pvPoint, TCHAR* modName);
 
 #ifdef __cplusplus
